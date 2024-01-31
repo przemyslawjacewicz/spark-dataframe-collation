@@ -10,7 +10,7 @@ updateSbtClassifiers / useCoursier := true
 lazy val root = (project in file("."))
   .settings(Common.settings(ProjectVersion(0, 1)))
   .settings(
-    libraryDependencies ++= Library.spark % Provided,
+    libraryDependencies ++= Library.spark,
     libraryDependencies ++= Library.scopt,
     libraryDependencies ++= Library.logging,
     libraryDependencies ++= Library.pureConfig,
