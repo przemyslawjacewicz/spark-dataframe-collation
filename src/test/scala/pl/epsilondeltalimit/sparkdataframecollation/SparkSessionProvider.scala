@@ -7,6 +7,7 @@ trait SparkSessionProvider {
     SparkSession.builder
       .appName("TestSparkSession")
       .master("local[*]")
+      .config("spark.ui.enabled", value = false)
       .getOrCreate()
   )
 }

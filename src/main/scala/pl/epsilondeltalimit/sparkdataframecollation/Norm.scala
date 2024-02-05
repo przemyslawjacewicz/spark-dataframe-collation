@@ -1,30 +1,33 @@
 package pl.epsilondeltalimit.sparkdataframecollation
 
-import org.apache.spark.sql.catalyst.expressions.Expression
+import org.apache.spark.sql.catalyst.expressions.Alias
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StringType
 import org.apache.spark.sql.{Column, DataFrame}
 import pl.epsilondeltalimit.sparkdataframecollation.implicits._
 
+//todo: make this more generic
 case class Norm(normCase: Norm.Case /* = NormConfig.CaseConfig.None*/,
                 normTrim: Norm.Trim /* = NormConfig.TrimConfig.None*/,
                 normAccent: Norm.Accent /* = NormConfig.AccentConfig.None*/ ) {
 
+  // todo: consider a different method because it looks like a variant of norm for column but based on string
   def apply(s: String): String =
     normAccent(normTrim(normCase(s)))
 
   def apply(c: Column, df: DataFrame): Column = {
-    def applyIfString(c: Column) =
-      df.select(c).schema.head.dataType match {
-        case StringType => normAccent(normTrim(normCase(c))).expr
-        case _          => c.expr
-      }
-
-    def go(expr: Expression): Expression =
-      if (expr.children.isEmpty) applyIfString(c)
-      else expr.mapChildren(e => if (e.children.isEmpty) applyIfString(new Column(e)) else go(e))
-
-    new Column(go(c.expr)).as(c.toString())
+    df.queryExecution.analyzed.output
+      .find(a => a.sql.endsWith(c.expr.sql))
+      .map(a =>
+        df.select(a.sql).schema.head.dataType match {
+          case StringType if a.resolved =>
+            new Column(Alias(normAccent(normTrim(normCase(col(a.sql)))).expr, a.name)(qualifier = a.qualifier))
+          case StringType =>
+            new Column(Alias(normAccent(normTrim(normCase(col(a.sql)))).expr, a.name)())
+          case _ =>
+            col(a.sql)
+        })
+      .getOrElse(c)
   }
 }
 
