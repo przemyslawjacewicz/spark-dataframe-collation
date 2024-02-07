@@ -5,7 +5,7 @@ import org.apache.spark.sql.types.StructType
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class CollationDataFrameSpec extends AnyFlatSpec with SparkSessionProvider with Matchers {
+class CollationDataFrameDistinctSpec extends AnyFlatSpec with SparkSessionProvider with Matchers {
   import pl.epsilondeltalimit.sparkdataframecollation.implicits._
   import spark.implicits._
 
@@ -41,31 +41,4 @@ class CollationDataFrameSpec extends AnyFlatSpec with SparkSessionProvider with 
     r.as[(String, Int)].collect().sorted should ===(Array((norm"a", 1), (norm"b", 2)))
   }
 
-  // note: testing only full outer join
-  behavior of "join"
-
-  ignore should "fallback to dataframe join when called on dataframes without string columns" in {
-    val df    = Seq(1, 2).toDF()
-    val right = Seq(1).toDF()
-
-    val r = df.as("df").c.join(right.as("right"), col("df.value") === col("right.value"), "left")
-
-    r.schema should ===(StructType.fromDDL("value INT, value INT"))
-    r.as[(Int, Int)].collect().sorted should ===(Array((1, 1), (1, null)))
-  }
-
-  it should "join dataframes when called on dataframes with string columns" in {
-    val df    = Seq("a", "B").toDF()
-    val right = Seq("A").toDF()
-
-    val r = df
-      .as("df")
-      .c
-      .join(right.as("right"), col("df.value") === col("right.value"), "full_outer")
-    r.show()
-
-    r.as[(Option[String], Option[String])]
-      .collect()
-      .sorted should ===(Array((Some("B"), None), (Some("a"), Some("A"))))
-  }
 }
