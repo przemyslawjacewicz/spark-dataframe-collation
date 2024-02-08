@@ -19,7 +19,7 @@ class CollationDataFrameJoinJoinExprsSpec extends AnyFlatSpec with SparkSessionP
     val df    = Seq((1, "a"), (2, "b")).toDF()
     val right = Seq((1, "A")).toDF()
 
-    val r = df.c.join(right, df("_1") === right("_1"))
+    val r = df.as("df").c.join(right.as("right"), col("df._1") === col("right._1"))
 
     r.schema should ===(StructType.fromDDL("_1 INT NOT NULL, _2 STRING, _1 INT NOT NULL, _2 STRING"))
     r.as[(Int, String, Int, String)].collect().sorted should ===(Array((1, "a", 1, "A")))

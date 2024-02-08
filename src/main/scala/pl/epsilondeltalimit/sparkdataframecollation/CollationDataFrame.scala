@@ -5,17 +5,11 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 
 case class CollationDataFrame(df: DataFrame)(implicit spark: SparkSession, norm: Norm) {
-
-  val alias = getAlias(df)
-
-  private def getAlias(df: DataFrame) = df.queryExecution.analyzed match {
-    case SubqueryAlias(identifier, _) => Some(identifier.name)
-    case _                            => None
-  }
+  import CollationDataFrame._
 
   def join(right: DataFrame, usingColumn: String): CollationDataFrame = {
-    val dfNorm     = normWithStaging(df)
-    val rightNorm  = normWithStaging(right)
+    val dfNorm     = normWithStagingColumns(df)
+    val rightNorm  = normWithStagingColumns(right)
     val joinedNorm = dfNorm.join(rightNorm, usingColumn)
     val dfNormColumns = dfNorm
       .drop(usingColumn, stagingColumnName(usingColumn))
@@ -33,8 +27,8 @@ case class CollationDataFrame(df: DataFrame)(implicit spark: SparkSession, norm:
   }
 
   def join(right: DataFrame, usingColumns: Seq[String]): CollationDataFrame = {
-    val dfNorm     = normWithStaging(df)
-    val rightNorm  = normWithStaging(right)
+    val dfNorm     = normWithStagingColumns(df)
+    val rightNorm  = normWithStagingColumns(right)
     val joinedNorm = dfNorm.join(rightNorm, usingColumns)
     val dfNormColumns = dfNorm
       .drop(usingColumns.flatMap(usingColumn => Seq(usingColumn, stagingColumnName(usingColumn))): _*)
@@ -52,8 +46,8 @@ case class CollationDataFrame(df: DataFrame)(implicit spark: SparkSession, norm:
   }
 
   def join(right: DataFrame, usingColumns: Seq[String], joinType: String): CollationDataFrame = {
-    val dfNorm     = normWithStaging(df)
-    val rightNorm  = normWithStaging(right)
+    val dfNorm     = normWithStagingColumns(df)
+    val rightNorm  = normWithStagingColumns(right)
     val joinedNorm = dfNorm.join(rightNorm, usingColumns, joinType)
     val dfNormColumns = dfNorm
       .drop(usingColumns.flatMap(usingColumn => Seq(usingColumn, stagingColumnName(usingColumn))): _*)
@@ -71,8 +65,8 @@ case class CollationDataFrame(df: DataFrame)(implicit spark: SparkSession, norm:
   }
 
   def join(right: DataFrame, joinExprs: Column): CollationDataFrame = {
-    val dfNorm     = normWithStaging(df)
-    val rightNorm  = normWithStaging(right)
+    val dfNorm     = normWithStagingColumns(df)
+    val rightNorm  = normWithStagingColumns(right)
     val joinedNorm = dfNorm.join(rightNorm, joinExprs)
     val dfNormColumns = dfNorm.columns
       .filter(isStagingColumn)
@@ -86,8 +80,10 @@ case class CollationDataFrame(df: DataFrame)(implicit spark: SparkSession, norm:
   }
 
   def join(right: DataFrame, joinExprs: Column, joinType: String): CollationDataFrame = {
-    val dfNorm     = normWithStaging(df)
-    val rightNorm  = normWithStaging(right)
+    val dfNorm = normWithStagingColumns(df)
+    dfNorm.show()
+    val rightNorm = normWithStagingColumns(right)
+    rightNorm.show()
     val joinedNorm = dfNorm.join(rightNorm, joinExprs, joinType)
     val dfNormColumns = dfNorm.columns
       .filter(isStagingColumn)
@@ -125,10 +121,28 @@ case class CollationDataFrame(df: DataFrame)(implicit spark: SparkSession, norm:
   def filter(conditionExpr: String): CollationDataFrame =
     ???
 
-  def where(condition: Column): CollationDataFrame =
-    CollationDataFrame(df.where(norm(condition, df)))
-//  def where(conditionExpr: String): CollationDataFrame =
-//    CollationDataFrame(df.where(norm(condition, df)))
+  def where(condition: Column): CollationDataFrame = {
+    val r = df.where(norm(condition, df).toString())
+
+    CollationDataFrame(r)
+  }
+
+  // note: ???
+  def where2(condition: Column): CollationDataFrame = {
+    val dfNorm = normWithStagingColumns(df)
+    dfNorm.show()
+    val filteredNorm = dfNorm.where(norm(condition, df).toString())
+    filteredNorm.show()
+    val dfNormColumns = dfNorm.columns
+      .filter(isStagingColumn)
+      .map(c => dfNorm(c).as(sourceColumnName(c)))
+    val r = filteredNorm.select(dfNormColumns: _*)
+
+    CollationDataFrame(r)
+  }
+
+  def where(conditionExpr: String): CollationDataFrame =
+    ??? // CollationDataFrame(df.where(norm(condition, df)))
 
   def groupBy(cols: Column*) =
     ???
@@ -170,17 +184,31 @@ case class CollationDataFrame(df: DataFrame)(implicit spark: SparkSession, norm:
 
   // todo: add randomness -> return either a or A, not depending on norm
   def distinct(): CollationDataFrame = {
-    val dfNorm = norm(df)
+    val dfNorm = CollationDataFrame.norm(df)(norm)
     val r      = dfNorm.distinct()
 
     CollationDataFrame(r)
   }
 
-  private def norm(df: DataFrame): DataFrame =
-    df.select(df.columns.map(c => norm(col(c), df)): _*)
+}
 
-  private def normWithStaging(df: DataFrame): DataFrame =
-    df.select(df.columns.flatMap(c => Seq(col(c).as(stagingColumnName(c)), norm(col(c), df))): _*)
+object CollationDataFrame {
+  private def getAlias(df: DataFrame) = df.queryExecution.analyzed match {
+    case SubqueryAlias(identifier, _) => Some(identifier.name)
+    case _                            => None
+  }
+
+  private def norm(df: DataFrame)(implicit norm: Norm): DataFrame = {
+    val r = df.select(df.columns.map(c => norm(col(c), df).as(c)): _*)
+
+    getAlias(df).map(r.as).getOrElse(r)
+  }
+
+  private def normWithStagingColumns(df: DataFrame)(implicit norm: Norm): DataFrame = {
+    val r = df.select(df.columns.flatMap(c => Seq(col(c).as(stagingColumnName(c)), norm(col(c), df).as(c))): _*)
+
+    getAlias(df).map(r.as).getOrElse(r)
+  }
 
   private def stagingColumnName(c: String): String =
     s"${c}__old"

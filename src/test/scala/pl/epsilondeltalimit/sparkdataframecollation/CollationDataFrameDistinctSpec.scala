@@ -11,7 +11,7 @@ class CollationDataFrameDistinctSpec extends AnyFlatSpec with SparkSessionProvid
 
   behavior of "distinct"
 
-  it should "fallback to dataframe distinct when called on a dataframe without string columns" in {
+  it should "fallback to dataframe distinct when called on a dataframe without normalized columns" in {
     val df = Seq(1, 1, 2).toDF()
 
     val r = df.c.distinct()
@@ -20,7 +20,7 @@ class CollationDataFrameDistinctSpec extends AnyFlatSpec with SparkSessionProvid
     r.as[Int].collect().sorted should ===(Array(1, 2))
   }
 
-  it should "deduplicate dataframe when called on a dataframe with string columns" in {
+  it should "deduplicate dataframe when called on a dataframe with normalized columns" in {
     val df = Seq("a", "A", "b").toDF()
 
     val r = df.c.distinct()
@@ -29,7 +29,7 @@ class CollationDataFrameDistinctSpec extends AnyFlatSpec with SparkSessionProvid
     r.as[String].collect().sorted should ===(Array("A", "B"))
   }
 
-  it should "deduplicate dataframe when called on a dataframe with string and non-string columns" in {
+  it should "deduplicate dataframe when called on a dataframe with normalized and non-normalized columns" in {
     val df = Seq(("a", 1), ("A", 1), ("b", 2)).toDF()
 
     val r = df.c.distinct()

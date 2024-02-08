@@ -1,6 +1,6 @@
 package pl.epsilondeltalimit.sparkdataframecollation
 
-import org.apache.spark.sql.catalyst.expressions.Alias
+import org.apache.spark.sql.catalyst.expressions.{Alias, Expression}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StringType
 import org.apache.spark.sql.{Column, DataFrame}
@@ -15,19 +15,30 @@ case class Norm(normCase: Norm.Case = Norm.Case.None,
   def apply(s: String): String =
     normAccent(normTrim(normCase(s)))
 
-  def apply(c: Column, df: DataFrame): Column =
-    df.queryExecution.analyzed.output
-      .find(a => a.sql.endsWith(c.expr.sql))
-      .map(a =>
-        df.select(a.sql).schema.head.dataType match {
-          case StringType if a.resolved =>
-            new Column(Alias(normAccent(normTrim(normCase(col(a.sql)))).expr, a.name)(qualifier = a.qualifier))
-          case StringType =>
-            new Column(Alias(normAccent(normTrim(normCase(col(a.sql)))).expr, a.name)())
-          case _ =>
-            col(a.sql)
-        })
-      .getOrElse(c)
+  def apply(c: Column, df: DataFrame): Column = {
+    // note: applicable for leaf expression (no children)
+    def applyForLeaf(expr: Expression): Expression = {
+      println(s"apply: expr=$expr")
+      val r = df.selectExpr(expr.sql).schema.head.dataType match {
+        case StringType =>
+          df.queryExecution.analyzed.output.find(_.sql.endsWith(expr.sql)) match {
+            case Some(a) => normAccent(normTrim(normCase(col(a.sql)))).expr
+            case None    => normAccent(normTrim(normCase(lit(expr.sql)))).expr
+          }
+        case _ => expr
+      }
+
+      println(s"apply: r=$r")
+      r
+    }
+
+    def go(expr: Expression): Expression =
+      if (expr.children.isEmpty) applyForLeaf(expr)
+      else expr.mapChildren(e => if (e.children.isEmpty) applyForLeaf(e) else go(e))
+
+    new Column(go(c.expr))
+  }
+
 }
 
 object Norm {
