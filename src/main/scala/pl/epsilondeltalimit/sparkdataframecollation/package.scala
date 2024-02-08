@@ -1,6 +1,6 @@
 package pl.epsilondeltalimit
 
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import java.text.Normalizer
 
@@ -20,7 +20,7 @@ package object sparkdataframecollation {
     }
 
     implicit class DataFrameWithCollation(df: DataFrame) {
-      def c(implicit norm: Norm): CollationDataFrame =
+      def c(implicit spark: SparkSession, norm: Norm): CollationDataFrame =
         CollationDataFrame(df)
     }
 

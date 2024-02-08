@@ -7,15 +7,15 @@ import org.apache.spark.sql.{Column, DataFrame}
 import pl.epsilondeltalimit.sparkdataframecollation.implicits._
 
 //todo: make this more generic
-case class Norm(normCase: Norm.Case /* = NormConfig.CaseConfig.None*/,
-                normTrim: Norm.Trim /* = NormConfig.TrimConfig.None*/,
-                normAccent: Norm.Accent /* = NormConfig.AccentConfig.None*/ ) {
+case class Norm(normCase: Norm.Case = Norm.Case.None,
+                normTrim: Norm.Trim = Norm.Trim.None,
+                normAccent: Norm.Accent = Norm.Accent.None) {
 
   // todo: consider a different method because it looks like a variant of norm for column but based on string
   def apply(s: String): String =
     normAccent(normTrim(normCase(s)))
 
-  def apply(c: Column, df: DataFrame): Column = {
+  def apply(c: Column, df: DataFrame): Column =
     df.queryExecution.analyzed.output
       .find(a => a.sql.endsWith(c.expr.sql))
       .map(a =>
@@ -28,7 +28,6 @@ case class Norm(normCase: Norm.Case /* = NormConfig.CaseConfig.None*/,
             col(a.sql)
         })
       .getOrElse(c)
-  }
 }
 
 object Norm {
