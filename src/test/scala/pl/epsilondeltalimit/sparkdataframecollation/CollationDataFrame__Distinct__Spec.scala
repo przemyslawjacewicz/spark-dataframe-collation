@@ -2,12 +2,14 @@ package pl.epsilondeltalimit.sparkdataframecollation
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import pl.epsilondeltalimit.sparkdataframecollation.normalization.Norm
 
-class CollationDataFrameDistinctSpec extends AnyFlatSpec with SparkSessionProvider with Matchers {
-  import pl.epsilondeltalimit.sparkdataframecollation.implicits._
+//todo: rewrite into property based test
+class CollationDataFrame__Distinct__Spec extends AnyFlatSpec with SparkSessionProvider with Matchers {
+  import pl.epsilondeltalimit.sparkdataframecollation.collation.implicits._
   import spark.implicits._
 
-  implicit val norm: Norm = Norm(normCase = Norm.Case.Upper)
+  implicit val norm: Norm = Norm(stringNorm = Norm.StringNorm(caseNorm = Norm.StringNorm.Case.Upper))
 
   behavior of "distinct"
 
