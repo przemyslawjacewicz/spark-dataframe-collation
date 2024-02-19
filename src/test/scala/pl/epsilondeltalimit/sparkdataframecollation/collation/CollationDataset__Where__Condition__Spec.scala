@@ -1,4 +1,4 @@
-package pl.epsilondeltalimit.sparkdataframecollation
+package pl.epsilondeltalimit.sparkdataframecollation.collation
 
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{Column, Dataset, Row}
@@ -7,9 +7,10 @@ import org.scalatest.prop.TableDrivenPropertyChecks.forAll
 import org.scalatest.prop.TableFor3
 import org.scalatest.prop.Tables.Table
 import org.scalatest.propspec.AnyPropSpec
+import pl.epsilondeltalimit.sparkdataframecollation.SparkSessionProvider
 import pl.epsilondeltalimit.sparkdataframecollation.normalization.Norm
 
-class CollationDataFrame__Filter__Condition__Spec extends AnyPropSpec with SparkSessionProvider with Matchers {
+class CollationDataset__Where__Condition__Spec extends AnyPropSpec with SparkSessionProvider with Matchers {
   import pl.epsilondeltalimit.sparkdataframecollation.collation.implicits._
   import spark.implicits._
 
@@ -34,7 +35,7 @@ class CollationDataFrame__Filter__Condition__Spec extends AnyPropSpec with Spark
     forAll(tests) { case (condition, norm, expected) =>
       implicit val n: Norm = norm
 
-      val r = df.c.filter(condition)
+      val r = df.c.where(condition)
 
       r.schema should ===(df.schema)
       r.collect() should contain theSameElementsAs expected

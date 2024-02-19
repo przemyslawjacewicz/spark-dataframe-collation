@@ -1,12 +1,13 @@
-package pl.epsilondeltalimit.sparkdataframecollation
+package pl.epsilondeltalimit.sparkdataframecollation.collation
 
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{Dataset, Row}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks.forAll
-import org.scalatest.prop.{TableFor4, TableFor5}
+import org.scalatest.prop.TableFor4
 import org.scalatest.prop.Tables.Table
 import org.scalatest.propspec.AnyPropSpec
+import pl.epsilondeltalimit.sparkdataframecollation.SparkSessionProvider
 import pl.epsilondeltalimit.sparkdataframecollation.normalization.Norm
 
 class CollationDataset__Join__UsingColumns__Spec extends AnyPropSpec with SparkSessionProvider with Matchers {

@@ -1,4 +1,4 @@
-package pl.epsilondeltalimit.sparkdataframecollation
+package pl.epsilondeltalimit.sparkdataframecollation.collation
 
 import org.apache.spark.sql.Row
 import org.scalatest.matchers.should.Matchers
@@ -6,9 +6,10 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
 import org.scalatest.prop.TableFor3
 import org.scalatest.prop.Tables.Table
 import org.scalatest.propspec.AnyPropSpec
+import pl.epsilondeltalimit.sparkdataframecollation.SparkSessionProvider
 import pl.epsilondeltalimit.sparkdataframecollation.normalization.Norm
 
-class CollationDataFrame__Distinct__Spec extends AnyPropSpec with SparkSessionProvider with Matchers {
+class CollationDataset__Distinct__Spec extends AnyPropSpec with SparkSessionProvider with Matchers {
   import pl.epsilondeltalimit.sparkdataframecollation.collation.implicits._
   import spark.implicits._
 
