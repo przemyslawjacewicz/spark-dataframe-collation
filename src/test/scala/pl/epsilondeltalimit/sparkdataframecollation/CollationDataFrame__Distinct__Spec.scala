@@ -1,43 +1,47 @@
 package pl.epsilondeltalimit.sparkdataframecollation
 
-import org.scalatest.flatspec.AnyFlatSpec
+import org.apache.spark.sql.Row
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.prop.TableDrivenPropertyChecks._
+import org.scalatest.prop.TableFor3
+import org.scalatest.prop.Tables.Table
+import org.scalatest.propspec.AnyPropSpec
 import pl.epsilondeltalimit.sparkdataframecollation.normalization.Norm
 
-//todo: rewrite into property based test
-class CollationDataFrame__Distinct__Spec extends AnyFlatSpec with SparkSessionProvider with Matchers {
+class CollationDataFrame__Distinct__Spec extends AnyPropSpec with SparkSessionProvider with Matchers {
   import pl.epsilondeltalimit.sparkdataframecollation.collation.implicits._
   import spark.implicits._
 
-  implicit val norm: Norm = Norm(stringNorm = Norm.StringNorm(caseNorm = Norm.StringNorm.Case.Upper))
+  val norm: Norm = Norm(stringNorm = Norm.StringNorm(caseNorm = Norm.StringNorm.Case.Upper))
 
-  behavior of "distinct"
+  val fallbackTests: TableFor3[Seq[Int], Norm, Array[Row]] = Table(
+    ("input", "norm", "expected"),
+    (Seq(1, 1, 2), Norm(), Array(Row(1), Row(2))),
+    (Seq(1, 1, 2), norm, Array(Row(1), Row(2)))
+  )
 
-  it should "fallback to dataframe distinct when called on a dataframe without normalized columns" in {
-    val df = Seq(1, 1, 2).toDF()
+  val simpleTests: TableFor3[Seq[String], Norm, Array[Row]] = Table(
+    ("input", "norm", "expected"),
+    (Seq("a", "A", "b"), Norm(), Array(Row("a"), Row("A"), Row("b"))),
+    (Seq("a", "A", "b"), norm, Array(Row("A"), Row("B"))) // todo: should B be b ?
+  )
 
-    val r = df.c.distinct()
+  val tests: TableFor3[Seq[(Int, String)], Norm, Array[Row]] = Table(
+    ("input", "norm", "expected"),
+    (Seq((1, "a"), (1, "A"), (2, "b")), Norm(), Array(Row(1, "a"), Row(1, "A"), Row(2, "b"))),
+    (Seq((1, "a"), (1, "A"), (2, "b")), norm, Array(Row(1, "A"), Row(2, "B")))
+  )
 
-    r.schema should ===(df.schema)
-    r.as[Int].collect().sorted should ===(Array(1, 2))
-  }
+  property("distinct should deduplicate with normalization") {
+    forAll(tests) { case (input, norm, expected) =>
+      implicit val n: Norm = norm
+      val df               = input.toDF()
 
-  it should "deduplicate dataframe when called on a dataframe with normalized columns" in {
-    val df = Seq("a", "A", "b").toDF()
+      val r = df.c.distinct()
 
-    val r = df.c.distinct()
-
-    r.schema should ===(df.schema)
-    r.as[String].collect().sorted should ===(Array("A", "B"))
-  }
-
-  it should "deduplicate dataframe when called on a dataframe with normalized and non-normalized columns" in {
-    val df = Seq(("a", 1), ("A", 1), ("b", 2)).toDF()
-
-    val r = df.c.distinct()
-
-    r.schema should ===(df.schema)
-    r.as[(String, Int)].collect().sorted should ===(Array(("A", 1), ("B", 2)))
+      r.schema should ===(df.schema)
+      r.collect() should contain theSameElementsAs expected
+    }
   }
 
 }

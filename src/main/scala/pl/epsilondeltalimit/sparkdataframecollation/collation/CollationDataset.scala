@@ -420,14 +420,9 @@ class CollationDataset[T](sparkSession: SparkSession, logicalPlan: LogicalPlan, 
   override def coalesce(numPartitions: Int): CollationDataset[T] =
     new CollationDataset[T](super.coalesce(numPartitions))
 
-  // todo: check me
   override def distinct(): CollationDataset[T] = {
-    println("=== distinct ===")
-    println(s"this: ${this.getClass.getSimpleName}")
     val dfNorm = new normalization.implicits.DatasetOps(super.toDF()).norm
-    println(s"dfNorm: ${dfNorm.getClass.getSimpleName}")
-    val r = dfNorm.distinct().as[T](encoder)
-    println(s"r: ${r.getClass.getSimpleName}")
+    val r      = dfNorm.distinct().as[T](encoder)
 
     new CollationDataset[T](r)
   }
